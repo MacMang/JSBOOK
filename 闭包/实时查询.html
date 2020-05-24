@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #app {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: scroll;
+    }
+
+    #app ul {
+      width: 100%;
+    }
+
+    #app ul li {
+      width: 100%;
+      height: 100px;
+      border-bottom: 1px solid lightgray;
+      padding: 10px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+    }
+
+    .searchInput {
+      width: 100%;
+      height: 50px;
+      border: 1px solid lightgray;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .searchInput input {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="../bower_components/mockjs/dist/mock.js"></script>
+  <script src="../bower_components/axios/dist/axios.js"></script>
+  <script src="../bower_components/vue/dist/vue.js"></script>
+  <script>
+    const url = 'http://localhost:9999/table';
+    const reg = /\/table(\/\w)*/
+    const data = Mock.mock({
+        'dataSource|100': [{
+          'key|+1': 1,
+          'name': '@name'
+        }]
+      })
+    Mock.mock(reg, "get", (options) => {
+      const searchValue = options.body?JSON.parse(options.body).searchValue: "";
+      const dataSource = data.dataSource.filter((item)=>{
+        const str = item.name.toLowerCase();
+        return str.indexOf(searchValue.toLowerCase())!==-1
+      })
+      return {dataSource:dataSource};
+    })
+  </script>
+</head>
+
+<body>
+  <div id="app">
+    <div class="searchInput">
+      <input type="text" v-model="searchValue" placeholder="搜索框" @input="startSearch">
+    </div>
+    <ul>
+      <li v-for="(item,key) in dataSource" :key="key">
+        {{item.key}}-{{item.name}}
+      </li>
+    </ul>
+  </div>
+</body>
+
+</html>
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      dataSource: [],
+      searchValue: '',
+      timer: null, //记录定时器的ID
+    },
+    mounted() {
+      this.addData();
+    },
+    methods: {
+      addData() {
+        axios.get(url).then((resp) => {
+          this.dataSource = [...this.dataSource, ...resp.data.dataSource]
+        });
+      },
+      startSearch() {
+        /*
+          当在搜索框输入内容的时候，每输入一个字符就会发起一次请求，这会给服务器造成很大的压力
+          解决方案：
+          1. 监听onchange方法，在输入完成失去光标之后再查询
+          2. 提供一个查询按钮，只有点击查询按钮的时候才开始查询
+          但是上面的两种的方案，都满足不了我们实时查询的需求,所以需要在监听oninput事件的同时
+          提供解决方案
+          1. 通过防抖，如果短时间内输入多个字符，以最后一次输入为准进行请求
+        */
+        console.log(this.timer);
+        //先清空上次生成的定时器
+        clearTimeout(this.timer)
+        //重新生成新的定时器，并将定时器的ID赋值给timer进行记录
+        this.timer = setTimeout(()=>{
+            //发起网络请求
+            axios({
+              method: "get",
+              url: "/table",
+              data: {
+                searchValue: this.searchValue
+              }
+            }).then(resp => {
+              //成功的回调函数，返回的是增加的数据
+              this.dataSource = [...resp.data.dataSource]
+              // 清空定时器
+              clearTimeout(this.timer);
+              this.timer = null;
+            });
+        },500)
+       
+    }
+  },
+  })
+</script>
