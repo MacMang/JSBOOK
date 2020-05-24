@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #app {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: scroll;
+    }
+
+    #app ul {
+      width: 100%;
+    }
+
+    #app ul li {
+      width: 100%;
+      height: 100px;
+      border-bottom: 1px solid lightgray;
+    }
+  </style>
+  <script src="./bower_components/mockjs/dist/mock.js"></script>
+  <script src="./bower_components/axios/dist/axios.js"></script>
+  <script src="./bower_components/vue/dist/vue.js"></script>
+  <script>
+    const url = 'http://localhost:9999/table';
+    Mock.mock(url, {
+      'dataSource|10': [{
+        'key|+1': 1,
+        'name': '@name'
+      }]
+    })
+  </script>
+</head>
+
+<body>
+  <div id="app" ref="app">
+    <ul>
+      <li v-for="item in dataSource" :key="item.key">
+        {{item.key}}-{{item.name}}
+      </li>
+    </ul>
+    <!-- <button @click="addData">加载</button> -->
+  </div>
+</body>
+
+</html>
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      dataSource: []
+    },
+    mounted() {
+      this.addData();
+      const loadData = this.scroll().loadData.bind(this);
+      app.addEventListener('scroll',loadData)
+    },
+    methods: {
+      addData() {
+        console.log("发起网络请求");
+        axios.get(url).then((resp) => {
+          this.dataSource = [...this.dataSource, ...resp.data.dataSource]
+        });
+      },
+      scroll() {
+        // 计算每个表有多高
+        let ulHeight = 10 * 101;
+        //app框的高度
+        let appHeight = this.$refs['app'].clientHeight;
+        //页码
+        let liNum = 1;
+        let min = Math.abs((appHeight * liNum - ulHeight));
+        let saved = false;
+        return {
+          loadData(ev) {
+              const scrollTop = ev.target.scrollTop;
+              /*
+                第一种情况，滑动到底部的时候再进行加载
+                if(Math.abs(min)===scrollTop){
+                  liNum+=1;
+                  min += ulHeight;
+                  this.addData();
+                }
+              */
+
+              /*
+                第二种情况：滚动距离min还有200的时候就发起请求
+              */
+              if (min === scrollTop) {
+                saved = false
+              }
+              if (min <= (scrollTop + 200)) {
+                //判断是否已经请求过数据，并且
+                if (saved) {
+                  console.log("已经发起请求过了，不需要重新发起请求");
+                  return;
+                }
+                this.addData();
+                saved = true;
+                min += ulHeight;
+              }
+          },
+          // 手动释放 闭包所占用的内存
+          cleanHeap(){
+            ulHeight = null;
+            appHeight = null;
+            min = null;
+            saved = null;
+          }
+        }
+      }
+    },
+  })
+</script>

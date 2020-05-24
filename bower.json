@@ -1,0 +1,20 @@
+{
+  "name": "mockdemo",
+  "authors": [
+    "mengtuo <mengtuo@outlook.com>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "mockjs": "^1.0.0"
+  }
+}
