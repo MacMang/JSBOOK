@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+   <script src="../bower_components/mockjs/dist/mock.js"></script>
+  <script src="../bower_components/axios/dist/axios.js"></script>
+  <script src="../bower_components/vue/dist/vue.js"></script>
+  <script>
+    const url = 'http://localhost:9999/table';
+    const rs = Mock.mock(url, {
+      'dataSource|10': [{
+        'key|+1': 1,
+        'name': '@name'
+      }]
+    })
+    console.log(rs);
+  </script>
+
+</head>
+<body>
+  <button type="button" id="loadBTN">加载</button>
+</body>
+</html>
+<script>
+const obj = {
+        ajax: function(options){
+          let _this = this;
+          return new Promise(function(resolve,reject){
+            var method = options.method?options.method.toLowerCase():"get";
+            var async = options.async?options.async:true;
+            var url = options.url?options.url:"";
+            var data = options.data?options.data:{};
+            var dataType = options.dataType?options.dataType:"json";
+            var jsonpCallback = options.jsonpCallback?options.jsonpCallback:"callback";
+            var jsonp = options.jsonp?options.jsonp:"callback";
+            var success = options.success?options.success:function(data){}
+            var error = options.error?options.error:function(){}
+            var complete = options.complete?options.complete:function(){}
+            var headers = options.header?options.header:{
+                "Content-type":"application/x-www-form-urlencoded"
+            }
+             //判断是否JSOP,
+            if(dataType==="jsonp"){
+                console.log("jsonp请求");
+                //动态生成script标签
+                _this.dynamicScript(url+"?"+jsonp+"="+jsonpCallback);
+               //将回调函数注册到全局对象window中
+                window[jsonpCallback] = function(data){
+                    console.log("请求的结果",data);
+                    if(data!=null){
+                        success(data);
+                        resolve(data);
+                    }else {
+                        error("请求的结果为空",data)
+                        reject(data);
+                    }
+                    complete(data);
+                }
+                return;
+            }
+              //如果是get请求,判断data是字符串还是对象,如果是对象则序列化参数
+              if(method=="get"){
+                if((typeof data) =="string"){
+                    url += "&"+data;
+                }
+                if(typeof data == "object"){
+                    url += "&"+_this.format(data)
+                }
+                url = url.slice(0,-1)
+            }
+            console.log(">>>>>",url,method,async);
+            var xhr = new XMLHttpRequest();
+            xhr.open(method,url,async);
+            //设置请求头
+            for(var key in headers){
+                xhr.setRequestHeader(key,headers[key])
+            }
+           //处理post请求的数据
+           var dataStr = JSON.stringify(data);
+           xhr.send(dataStr);
+           xhr.onreadystatechange = function(){
+                var status = {
+                   "204":"服务器没有返回内容",
+                   "401": "验证失败",
+                   "403": "没有权限访问该资源",
+                   "404": "请求的资源不存在",
+                   "500": "服务器出错",
+                   "503": "服务器超负荷,无法完成请求"
+               }
+               var result = null;
+               //判断ajax请求是否完成
+               if(xhr.readyState===4){
+                   //判断服务器返回的请求状态是否为200
+                   if(xhr.status===200){
+                       console.log(xhr.responseText);
+                       //获取服务器返回的数据
+                        var response = xhr.responseText;
+                        //如果dataType为json,则需要将数据转换成json格式
+                        if(dataType=="json"){
+                            result = JSON.parse(response);
+                        }else {
+                            //其他格式原样输出
+                            result = response;
+                        }
+                        success(result);
+                        resolve(result);
+                   }else{
+                       error(status[xhr.status])
+                       reject(status[xhr.status]);
+                   }
+
+               }
+           }
+          })
+           
+        },
+        format: function(obj){
+            var rs = ""
+            for(var key in obj){
+                rs += key+"="+obj[key]+"&"
+            }
+            return rs.slice(0,-1);
+        },
+        dynamicScript: function(src){
+            var script_dom = document.createElement('script');
+            script_dom.src = src;
+            script_dom.language = 'javascript';
+            script_dom.type = 'text/javascript';
+            var head = document.getElementsByTagName('head').item(0);
+            head.appendChild(script_dom);
+        }
+    }
+const axios = {
+    get:function(options){
+      return obj.ajax(options);
+    },
+    post:function(options){
+      options.method = 'post';
+      return obj.ajax(options);
+    }
+}
+
+let loadBTN = document.getElementById('loadBTN');
+loadBTN.onclick = function(){
+    console.log("点击",url);
+    axios.get({url:url}).then(function(resp){
+        console.log("请求结果》》》》",resp);
+    });
+}
+
+</script>
