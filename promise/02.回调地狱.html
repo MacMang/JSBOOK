@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=`, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        .ball {
+            position: absolute;
+            top:10px;
+
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        #ball1 {
+            background: red;
+        }
+        #ball2 {
+            background: cyan;
+            left: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ball1" class="ball"></div>
+    <div id="ball2" class="ball"></div>
+</body>
+<script>
+    var ball1 = document.getElementById("ball1");
+    var ball2 = document.getElementById("ball2");
+
+    function animatePromise(ball,top){
+      return  new Promise((resovle)=>{
+        _animate();
+        function _animate(){
+          setTimeout(function(){
+            var topDis = parseInt(ball.offsetTop,10);
+            if(topDis === top){
+                resovle();
+            }else{
+                if(topDis < top){
+                    topDis += 2;
+                }else{
+                    topDis -=2;
+                }
+                ball.style.top = topDis+"px";
+                _animate(ball,top)
+            }
+           },13);
+        }
+      })
+    }
+    animatePromise(ball1,100)
+    .then(()=>{
+      return animatePromise(ball2,200)
+    })
+    .then(()=>{
+      return animatePromise(ball1,300)
+    })
+</script>
+</html>
